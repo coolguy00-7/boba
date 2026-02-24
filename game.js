@@ -132,39 +132,70 @@ function intersects(a, b) {
   );
 }
 
-function resolvePlatformCollision(prevX, prevY) {
+function resolvePlatformCollision(prevX, prevY, platformShift) {
+  const prevBottom = prevY + player.h;
+  const currBottom = player.y + player.h;
+  const prevTop = prevY;
+  const currTop = player.y;
+
   for (const pf of platforms) {
-    if (!intersects(player, pf)) {
-      continue;
-    }
-
-    const prevBottom = prevY + player.h;
-    const prevTop = prevY;
+    const prevPfX = pf.x + platformShift;
     const prevRight = prevX + player.w;
+    const currRight = player.x + player.w;
     const prevLeft = prevX;
+    const currLeft = player.x;
+    const overlapXNow = currRight > pf.x && currLeft < pf.x + pf.w;
+    const overlapXPrev = prevRight > prevPfX && prevLeft < prevPfX + pf.w;
+    const overlapYNow = currBottom > pf.y && currTop < pf.y + pf.h;
 
-    if (prevBottom <= pf.y && player.vy >= 0) {
+    if (player.vy >= 0 && (overlapXNow || overlapXPrev) && prevBottom <= pf.y && currBottom >= pf.y) {
       player.y = pf.y - player.h;
       player.vy = 0;
       player.onGround = true;
       continue;
     }
 
-    if (prevTop >= pf.y + pf.h && player.vy < 0) {
+    if (player.vy < 0 && (overlapXNow || overlapXPrev) && prevTop >= pf.y + pf.h && currTop <= pf.y + pf.h) {
       player.y = pf.y + pf.h;
       player.vy = 0;
       continue;
     }
 
-    if (prevRight <= pf.x && player.vx > 0) {
+    if (overlapYNow && prevRight <= prevPfX && currRight >= pf.x) {
       player.x = pf.x - player.w;
       player.vx = 0;
       continue;
     }
 
-    if (prevLeft >= pf.x + pf.w && player.vx < 0) {
+    if (overlapYNow && prevLeft >= prevPfX + pf.w && currLeft <= pf.x + pf.w) {
       player.x = pf.x + pf.w;
       player.vx = 0;
+      continue;
+    }
+
+    if (!intersects(player, pf)) {
+      continue;
+    }
+
+    const penLeft = currRight - pf.x;
+    const penRight = pf.x + pf.w - currLeft;
+    const penTop = currBottom - pf.y;
+    const penBottom = pf.y + pf.h - currTop;
+    const minPen = Math.min(penLeft, penRight, penTop, penBottom);
+
+    if (minPen === penTop) {
+      player.y = pf.y - player.h;
+      player.vy = Math.min(0, player.vy);
+      player.onGround = true;
+    } else if (minPen === penBottom) {
+      player.y = pf.y + pf.h;
+      player.vy = Math.max(0, player.vy);
+    } else if (minPen === penLeft) {
+      player.x = pf.x - player.w;
+      player.vx = Math.min(0, player.vx);
+    } else {
+      player.x = pf.x + pf.w;
+      player.vx = Math.max(0, player.vx);
     }
   }
 }
@@ -228,7 +259,7 @@ function update() {
     const stepPrevX = player.x;
     const stepPrevY = player.y;
     player.y += player.vy / verticalSteps;
-    resolvePlatformCollision(stepPrevX, stepPrevY);
+    resolvePlatformCollision(stepPrevX, stepPrevY, world.speed);
   }
 
   if (player.y > HEIGHT + 10) {
