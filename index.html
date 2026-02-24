@@ -1,146 +1,32 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Tools</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <nav class="nav">
-        <span class="logo">DailyTools</span>
-        <div class="links">
-            <a href="#calc">Calc</a>
-            <a href="#todo">Todo</a>
-            <a href="#timer">Timer</a>
-            <a href="#notes">Notes</a>
-        </div>
-    </nav>
-
-    <div class="container">
-        <div id="calc" class="card">
-            <h2>Calculator</h2>
-            <input type="text" id="display" class="calc-display" readonly>
-            <div class="calc-btns">
-                <button onclick="cls()">C</button>
-                <button onclick="add('(')">(</button>
-                <button onclick="add(')')">)</button>
-                <button onclick="add('/')">/</button>
-                <button onclick="add('7')">7</button>
-                <button onclick="add('8')">8</button>
-                <button onclick="add('9')">9</button>
-                <button onclick="add('*')">*</button>
-                <button onclick="add('4')">4</button>
-                <button onclick="add('5')">5</button>
-                <button onclick="add('6')">6</button>
-                <button onclick="add('-')">-</button>
-                <button onclick="add('1')">1</button>
-                <button onclick="add('2')">2</button>
-                <button onclick="add('3')">3</button>
-                <button onclick="add('+')">+</button>
-                <button onclick="add('0')" class="span2">0</button>
-                <button onclick="add('.')">.</button>
-                <button onclick="eq()">=</button>
-            </div>
-        </div>
-
-        <div id="todo" class="card">
-            <h2>Todo List</h2>
-            <div class="input-group">
-                <input type="text" id="todo-input" placeholder="Add task...">
-                <button onclick="addTodo()">Add</button>
-            </div>
-            <ul id="todo-list"></ul>
-        </div>
-
-        <div id="timer" class="card">
-            <h2>Timer</h2>
-            <div class="timer-display">
-                <span id="mins">25</span>:<span id="secs">00</span>
-            </div>
-            <div class="timer-btns">
-                <button onclick="start()">Start</button>
-                <button onclick="stop()">Stop</button>
-                <button onclick="rst()">Reset</button>
-            </div>
-            <div class="timer-modes">
-                <button class="active" onclick="setMode(25, this)">Work</button>
-                <button onclick="setMode(5, this)">Short</button>
-                <button onclick="setMode(15, this)">Long</button>
-            </div>
-        </div>
-
-        <div id="notes" class="card">
-            <h2>Notes</h2>
-            <textarea id="notes-area" placeholder="Write stuff here..."></textarea>
-            <div class="notes-footer">
-                <span id="save-msg">Saved</span>
-                <button onclick="clearNotes()">Clear</button>
-            </div>
-        </div>
-    </div>
-
-    <footer>Made for everyday use</footer>
-
-    <script>
-        var calcStr = '';
-        function add(c) { calcStr += c; document.getElementById('display').value = calcStr; }
-        function cls() { calcStr = ''; document.getElementById('display').value = ''; }
-        function eq() {
-            try { document.getElementById('display').value = eval(calcStr); calcStr = document.getElementById('display').value; }
-            catch(err) { document.getElementById('display').value = 'Err'; calcStr = ''; }
-        }
-
-        function addTodo() {
-            var input = document.getElementById('todo-input');
-            if(input.value.trim() === '') return;
-            var li = document.createElement('li');
-            li.innerHTML = '<span onclick="toggle(this)">' + input.value + '</span><button onclick="rem(this)">x</button>';
-            document.getElementById('todo-list').appendChild(li);
-            input.value = '';
-        }
-        function toggle(el) { el.classList.toggle('done'); }
-        function rem(el) { el.parentNode.remove(); }
-        document.getElementById('todo-input').onkeypress = function(e) { if(e.key === 'Enter') addTodo(); };
-
-        var time = 1500, interval = null, isRunning = false;
-        function upd() {
-            var m = Math.floor(time/60), s = time%60;
-            document.getElementById('mins').innerText = m < 10 ? '0'+m : m;
-            document.getElementById('secs').innerText = s < 10 ? '0'+s : s;
-        }
-        function start() {
-            if(!isRunning) {
-                isRunning = true;
-                interval = setInterval(function() {
-                    if(time > 0) { time--; upd(); }
-                    else { clearInterval(interval); isRunning = false; alert('Time up!'); }
-                }, 1000);
-            }
-        }
-        function stop() { clearInterval(interval); isRunning = false; }
-        function rst() { stop(); time = 1500; upd(); }
-        function setMode(min, btn) {
-            stop();
-            time = min * 60;
-            upd();
-            document.querySelectorAll('.timer-modes button').forEach(function(b){ b.classList.remove('active'); });
-            btn.classList.add('active');
-        }
-
-        var notes = document.getElementById('notes-area');
-        notes.value = localStorage.getItem('notes') || '';
-        notes.oninput = function() {
-            localStorage.setItem('notes', notes.value);
-            document.getElementById('save-msg').innerText = 'Saving...';
-            setTimeout(function(){ document.getElementById('save-msg').innerText = 'Saved'; }, 400);
-        };
-        function clearNotes() {
-            if(confirm('Clear all notes?')) {
-                notes.value = '';
-                localStorage.removeItem('notes');
-            }
-        }
-    </script>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="8-bit infinite platformer game with jump controls and local high score saving."
+    />
+    <title>Pixel Hopper</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-label="Pixel Hopper game">
+      <h1>PIXEL HOPPER</h1>
+      <p class="instructions">Jump with <kbd>Space</kbd>/<kbd>W</kbd>/<kbd>ArrowUp</kbd> or tap.</p>
+      <canvas
+        id="game"
+        width="800"
+        height="450"
+        role="img"
+        aria-label="Infinite platformer game screen"
+      ></canvas>
+      <section class="hud" aria-live="polite">
+        <p>Score: <span id="score">0</span></p>
+        <p>High Score: <span id="high-score">0</span></p>
+      </section>
+      <p id="state" class="state">Press jump to start</p>
+    </main>
+    <script src="game.js"></script>
+  </body>
 </html>
