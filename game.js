@@ -48,7 +48,7 @@ function resetWorld() {
   player.y = GROUND_Y - player.h;
   player.vx = 0;
   player.vy = 0;
-  player.onGround = false;
+  player.onGround = true;
 
   platforms = [
     { x: 0, y: GROUND_Y, w: 320, h: 58 },
@@ -132,20 +132,18 @@ function intersects(a, b) {
   );
 }
 
-function resolvePlatformCollision(prevX, prevY, platformShift) {
-  const prevBottom = prevY + player.h;
-  const currBottom = player.y + player.h;
-  const prevTop = prevY;
-  const currTop = player.y;
-
+function resolvePlatformCollision(prevX, prevY) {
   for (const pf of platforms) {
-    const prevPfX = pf.x + platformShift;
+    const prevBottom = prevY + player.h;
+    const currBottom = player.y + player.h;
+    const prevTop = prevY;
+    const currTop = player.y;
     const prevRight = prevX + player.w;
     const currRight = player.x + player.w;
     const prevLeft = prevX;
     const currLeft = player.x;
     const overlapXNow = currRight > pf.x && currLeft < pf.x + pf.w;
-    const overlapXPrev = prevRight > prevPfX && prevLeft < prevPfX + pf.w;
+    const overlapXPrev = prevRight > pf.x && prevLeft < pf.x + pf.w;
     const overlapYNow = currBottom > pf.y && currTop < pf.y + pf.h;
 
     if (player.vy >= 0 && (overlapXNow || overlapXPrev) && prevBottom <= pf.y && currBottom >= pf.y) {
@@ -161,13 +159,13 @@ function resolvePlatformCollision(prevX, prevY, platformShift) {
       continue;
     }
 
-    if (overlapYNow && prevRight <= prevPfX && currRight >= pf.x) {
+    if (overlapYNow && prevRight <= pf.x && currRight >= pf.x) {
       player.x = pf.x - player.w;
       player.vx = 0;
       continue;
     }
 
-    if (overlapYNow && prevLeft >= prevPfX + pf.w && currLeft <= pf.x + pf.w) {
+    if (overlapYNow && prevLeft >= pf.x + pf.w && currLeft <= pf.x + pf.w) {
       player.x = pf.x + pf.w;
       player.vx = 0;
       continue;
@@ -254,12 +252,12 @@ function update() {
 
   player.vy += world.gravity;
   player.onGround = false;
-  const verticalSteps = Math.max(1, Math.ceil(Math.abs(player.vy) / 5));
+  const verticalSteps = Math.max(2, Math.ceil((Math.abs(player.vy) + world.speed) / 2));
   for (let i = 0; i < verticalSteps; i += 1) {
     const stepPrevX = player.x;
     const stepPrevY = player.y;
     player.y += player.vy / verticalSteps;
-    resolvePlatformCollision(stepPrevX, stepPrevY, world.speed);
+    resolvePlatformCollision(stepPrevX, stepPrevY);
   }
 
   if (player.y > HEIGHT + 10) {
