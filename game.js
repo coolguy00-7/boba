@@ -13,12 +13,13 @@ const GROUND_Y = HEIGHT - 58;
 const world = {
   speed: 3.1,
   gravity: 0.45,
-  jumpForce: -10.2,
+  jumpForce: -11.4,
   score: 0,
   highScore: Number(localStorage.getItem(STORAGE_KEY) || 0),
   running: false,
   gameOver: false,
   time: 0,
+  difficulty: 0,
 };
 
 const player = {
@@ -33,11 +34,14 @@ const player = {
 
 let platforms = [];
 let stars = [];
+const keysDown = new Set();
 
 function resetWorld() {
   world.score = 0;
   world.speed = 3.1;
+  world.gravity = 0.45;
   world.time = 0;
+  world.difficulty = 0;
   world.running = false;
   world.gameOver = false;
 
@@ -48,8 +52,8 @@ function resetWorld() {
 
   platforms = [
     { x: 0, y: GROUND_Y, w: 320, h: 58 },
-    { x: 360, y: GROUND_Y, w: 240, h: 58 },
-    { x: 640, y: GROUND_Y, w: 220, h: 58 },
+    { x: 360, y: GROUND_Y - 30, w: 220, h: 58 },
+    { x: 650, y: GROUND_Y - 62, w: 220, h: 58 },
   ];
 
   stars = Array.from({ length: 40 }, () => ({
@@ -89,24 +93,80 @@ function jump() {
 
 function spawnPlatform() {
   const rightMost = platforms[platforms.length - 1];
-  const gap = 70 + Math.random() * 140;
-  const width = 120 + Math.random() * 180;
+  const diff = world.difficulty;
+  const minGap = 70 + diff * 35;
+  const maxGap = 190 + diff * 70;
+  const gap = minGap + Math.random() * (maxGap - minGap);
+
+  const minWidth = Math.max(92, 120 - diff * 28);
+  const maxWidth = Math.max(140, 270 - diff * 90);
+  let width = minWidth + Math.random() * (maxWidth - minWidth);
+  if (Math.random() < 0.2 + diff * 0.25) {
+    width *= 0.72;
+  }
+
   const x = rightMost.x + rightMost.w + gap;
+  const minY = 85;
+  const maxY = GROUND_Y;
+  const yStep = (Math.random() * 2 - 1) * (70 + diff * 70);
+  let y = Math.max(minY, Math.min(maxY, rightMost.y + yStep));
+
+  if (Math.random() < 0.35 + diff * 0.3) {
+    y = Math.max(minY, y - (18 + Math.random() * (45 + diff * 45)));
+  }
 
   platforms.push({
     x,
-    y: GROUND_Y,
-    w: width,
+    y,
+    w: Math.max(80, width),
     h: 58,
   });
 }
 
-function intersectsTop(pf) {
-  const nextBottom = player.y + player.h + player.vy;
-  const withinX = player.x + player.w > pf.x && player.x < pf.x + pf.w;
-  const falling = player.vy >= 0;
-  const crossesTop = player.y + player.h <= pf.y && nextBottom >= pf.y;
-  return withinX && falling && crossesTop;
+function intersects(a, b) {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
+}
+
+function resolvePlatformCollision(prevX, prevY) {
+  for (const pf of platforms) {
+    if (!intersects(player, pf)) {
+      continue;
+    }
+
+    const prevBottom = prevY + player.h;
+    const prevTop = prevY;
+    const prevRight = prevX + player.w;
+    const prevLeft = prevX;
+
+    if (prevBottom <= pf.y && player.vy >= 0) {
+      player.y = pf.y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+      continue;
+    }
+
+    if (prevTop >= pf.y + pf.h && player.vy < 0) {
+      player.y = pf.y + pf.h;
+      player.vy = 0;
+      continue;
+    }
+
+    if (prevRight <= pf.x && player.vx > 0) {
+      player.x = pf.x - player.w;
+      player.vx = 0;
+      continue;
+    }
+
+    if (prevLeft >= pf.x + pf.w && player.vx < 0) {
+      player.x = pf.x + pf.w;
+      player.vx = 0;
+    }
+  }
 }
 
 function update() {
@@ -115,7 +175,9 @@ function update() {
   }
 
   world.time += 1;
-  world.speed += 0.0007;
+  world.difficulty = Math.min(1, world.time / 3600 + world.score / 4200);
+  world.speed = 3.1 + world.difficulty * 2.2;
+  world.gravity = 0.45 + world.difficulty * 0.16;
   world.score += world.speed * 0.12;
 
   platforms.forEach((pf) => {
@@ -138,17 +200,35 @@ function update() {
     }
   });
 
-  player.vy += world.gravity;
-  player.y += player.vy;
-  player.onGround = false;
+  const moveSpeed = 4;
+  const movingLeft = keysDown.has("ArrowLeft") || keysDown.has("KeyA");
+  const movingRight = keysDown.has("ArrowRight") || keysDown.has("KeyD");
 
-  for (const pf of platforms) {
-    if (intersectsTop(pf)) {
-      player.y = pf.y - player.h;
-      player.vy = 0;
-      player.onGround = true;
-      break;
-    }
+  if (movingLeft && !movingRight) {
+    player.vx = -moveSpeed;
+  } else if (movingRight && !movingLeft) {
+    player.vx = moveSpeed;
+  } else {
+    player.vx *= 0.75;
+  }
+
+  player.x += player.vx;
+  if (player.x < 0) {
+    player.x = 0;
+    player.vx = 0;
+  } else if (player.x + player.w > WIDTH) {
+    player.x = WIDTH - player.w;
+    player.vx = 0;
+  }
+
+  player.vy += world.gravity;
+  player.onGround = false;
+  const verticalSteps = Math.max(1, Math.ceil(Math.abs(player.vy) / 5));
+  for (let i = 0; i < verticalSteps; i += 1) {
+    const stepPrevX = player.x;
+    const stepPrevY = player.y;
+    player.y += player.vy / verticalSteps;
+    resolvePlatformCollision(stepPrevX, stepPrevY);
   }
 
   if (player.y > HEIGHT + 10) {
@@ -249,11 +329,16 @@ function loop() {
 }
 
 window.addEventListener("keydown", (event) => {
-  const keys = ["Space", "ArrowUp", "KeyW"];
-  if (keys.includes(event.code)) {
+  const jumpKeys = ["Space", "ArrowUp", "KeyW"];
+  if (jumpKeys.includes(event.code)) {
     event.preventDefault();
     jump();
   }
+  keysDown.add(event.code);
+});
+
+window.addEventListener("keyup", (event) => {
+  keysDown.delete(event.code);
 });
 
 canvas.addEventListener("pointerdown", () => jump());
